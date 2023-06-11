@@ -1,10 +1,11 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const axios = require('axios');
+require('dotenv').config()
 
 const listForDownload = 'listLinks.txt';
 
-const instagramUrl = 'https://www.instagram.com/user'; //change user to desired account name
+const instagramUrl = process.env.INSTAONE; //env 
 
 async function scrapeImages() {
     const browser = await puppeteer.launch({headless: 'new'});
