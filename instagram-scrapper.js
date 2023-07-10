@@ -1,77 +1,34 @@
+require('dotenv').config()
 const puppeteer = require('puppeteer');
 const fs = require('fs');
-const axios = require('axios');
-require('dotenv').config()
 
-const listForDownload = 'listLinks.txt';
+const scrapeImagesFromInstagram = async () => {
+  const browser = await puppeteer.launch({headless:'new'});
+  const page = await browser.newPage();
 
-const instagramUrl = process.env.INSTAONE; //env 
+  await page.goto(process.env.ARTONE);
 
-async function scrapeImages() {
-    const browser = await puppeteer.launch({headless: 'new'});
-    const page = await browser.newPage();
-    await page.goto(instagramUrl);
+  //'.project-image img' //default selector
+  
+  // Wait for the page to load the images
+  await page.waitForSelector('.project-image img');
 
+  // Extract image URLs
+  const imageUrls = await page.$$eval('.project-image img', images => images.map(img => img.src));
 
-    //use selectors bellow to get list of images
-    //'img[crossorigin="anonymous"]'
-    //'img.x5yr21d' // this selector give me more images than selector above
-    //'div > ._aagv img' //work best for now
+  console.log(imageUrls);
 
-    await page.waitForSelector('._aagv img.x5yr21d', {timeout: 5000});
+  // Save image URLs to a file
+  const filePath = 'zuanlist2.txt';
+  fs.writeFile(filePath, imageUrls.join('\n'), err => {
+    if (err) {
+      console.error('Error saving image URLs to file:', err);
+    } else {
+      console.log(`Image URLs saved to ${filePath}`);
+    }
+  });
 
-    const imageUrls = await page.evaluate(() => {
-        const images = Array.from(document.querySelectorAll('._aagv img .x5yr21d'));
-        return images.map(img => img.src);
-    }); 
-    
-    await browser.close();
-    return imageUrls;
+  await browser.close();
 };
 
-async function downloadImage(url, filename){
-    const response = await axios({
-        url,
-        responseType: 'stream',
-    });
-
-    const writer = fs.createWriteStream(filename);
-    response.data.pipe(writer);
-
-    return new Promise((resolve, reject) =>{
-        writer.on('finish',resolve);
-        writer.on('error',reject);
-    });
-}
-
-async function downloadImages(imageUrls){
-    for (let i = 0;i < imageUrls.length;i++){
-        const url = imageUrls[i];
-        const filename = `image_${i + 1}.jpg`;
-
-        console.log(`Downloading ${url} ...`);
-
-        try {
-            await downloadImage(url, filename);
-            console.log(`Downloaded ${url}`);
-        }catch (error){
-            console.error(`Failed to download ${url}: `, error);
-        }
-    }
-}
-
-async function run() {
-    try {
-        const imageUrls = await scrapeImages();
-
-        fs.writeFileSync(listForDownload,imageUrls.join('\n'));
-
-        await downloadImages(imageUrls);
-        console.log('All images downloaded successfully!!!')
-    }catch (error) {
-        console.error('Error occured',error);
-    }
-}
-
-run()
-
+scrapeImagesFromInstagram();
